@@ -90,7 +90,7 @@ def get_model_architecture(model_version, input_shape):
 
 
 def create_model(input_shape):
-    model = get_model_architecture(1, input_shape)
+    model = get_model_architecture(6, input_shape)
     model.compile(optimizer=Adam(learning_rate=0.00005),
                     loss='categorical_crossentropy',
                     metrics=['accuracy'])
