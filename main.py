@@ -10,12 +10,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input, Dropout, BatchNormalization
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.regularizers import l2
+from tensorflow.keras.regularizers import l1, l2
 from Preprocessing import Preprocessing
-
-import numpy as np
-import tensorflow as tf
-
 
 def get_model_architecture(model_version, input_shape):
     architectures = [
@@ -82,15 +78,64 @@ def get_model_architecture(model_version, input_shape):
             Dense(32, activation='relu'),
             Dense(4, activation='softmax')
         ]),
+        'wide_deep'
     ]
-    
-    # Return the selected model version
-    return architectures[model_version]
+
+    # https://arxiv.org/pdf/1606.07792 (PAPER LINK)
+    if model_version == 'wide_deep':
+        input_layer = Input(shape=(input_shape,))
+
+        # Wide part
+        wide_output = Dense(
+            4,
+            activation='linear',
+            kernel_regularizer=l1(0.001)
+        )(input_layer)
+
+        # Deep part
+        deep = Dense(
+            128,
+            activation='relu',
+            kernel_regularizer=l2(0.001)
+        )(input_layer)
+        deep = BatchNormalization()(deep)
+        deep = Dropout(0.5)(deep)
+
+        deep = Dense(
+            64,
+            activation='relu',
+            kernel_regularizer=l2(0.001)
+        )(deep)
+        deep = BatchNormalization()(deep)
+        deep = Dropout(0.5)(deep)
+
+        deep = Dense(
+            32,
+            activation='relu',
+            kernel_regularizer=l2(0.001)
+        )(deep)
+        deep = BatchNormalization()(deep)
+        deep = Dropout(0.5)(deep)
+
+        deep_output = Dense(
+            4,
+            activation='linear',
+            kernel_regularizer=l2(0.001)
+        )(deep)
+
+        # Combine Wide and Deep parts
+        combined_output = tf.keras.layers.add([wide_output, deep_output])
+        combined_output = tf.keras.layers.Activation('softmax')(combined_output)
+
+        model = tf.keras.Model(inputs=input_layer, outputs=combined_output)
+        return model
+    else:
+        return architectures[model_version]
 
 
 def create_model(input_shape):
     model = get_model_architecture(6, input_shape)
-    model.compile(optimizer=Adam(learning_rate=0.00005), 
+    model.compile(optimizer=Adam(learning_rate=0.0005), 
                     loss='categorical_crossentropy', 
                     metrics=['accuracy'])
     return model
@@ -107,14 +152,14 @@ if __name__ == "__main__":
     y_train = preprocessing.label.values
 
     smote = SMOTE()
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    X_train, y_train = smote.fit_resample(X_train, y_train)
 
     extra_iteration = False
 
     while preprocessing.unlabeled_data.shape[0] > 0 or extra_iteration:
 
         # Split training data (80% training, 20% validation)
-        X_train, X_val, y_train, y_val = train_test_split(X_train_resampled, y_train_resampled, test_size=0.2, random_state=230)
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=230)
         
         # Normalize the input features
         scaler = StandardScaler()
@@ -161,7 +206,7 @@ if __name__ == "__main__":
         plt.legend()
 
         plt.tight_layout()
-        # plt.show()
+        plt.show()
 
         # Evaluate the model on the validation set
         final_loss, final_accuracy = model.evaluate(X_val, y_val)
