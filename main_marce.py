@@ -10,8 +10,10 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from Preprocessing import Preprocessing
+from tensorflow.keras.regularizers import l2  # marcelo
+from tensorflow.keras.layers import Dropout  # marcelo
 from tensorflow.keras.utils import to_categorical
 
 def create_model(input_shape):
@@ -24,6 +26,44 @@ def create_model(input_shape):
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
     return model
+
+def create_model_2(input_shape):  # Adding L2 regularization to the layers to help prevent overfitting by penalizing large weights.
+    model = Sequential([
+        Input(shape=(input_shape,)),
+        Dense(16, activation='relu', kernel_regularizer=l2(0.001)),
+        Dense(4, activation='softmax')
+    ])
+    model.compile(optimizer=Adam(learning_rate=0.00001),
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+    ## rate 0.001, 0.0001
+
+def create_model_3(input_shape):  # Adding dropout layers to help prevent overfitting by randomly "dropping out" a proportion of the layer's units during training
+    model = Sequential([
+        Input(shape=(input_shape,)),
+        Dense(16, activation='relu'),
+        Dropout(0.5),  # Dropout layer with 50% rate
+        Dense(4, activation='softmax')
+    ])
+    model.compile(optimizer=Adam(learning_rate=0.00001),
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+    # Dropout rate 0.3 or 0.5
+
+def create_model_4(input_shape):  # Dropout and L2 Regularization combined
+    model = Sequential([
+        Input(shape=(input_shape,)),
+        Dense(16, activation='relu', kernel_regularizer=l2(0.001)),
+        Dropout(0.5),
+        Dense(4, activation='softmax')
+    ])
+    model.compile(optimizer=Adam(learning_rate=0.00001),
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+
 
 if __name__ == "__main__":
     # Load and preprocess training data
@@ -49,17 +89,29 @@ if __name__ == "__main__":
 
     # Create and compile the model
     input_shape = X_train.shape[1]
-    model = create_model(input_shape)
+    #model = create_model(input_shape)
+    #model = create_model_2(input_shape)
+    #model = create_model_3(input_shape)
+    model = create_model_4(input_shape)
 
     # Define EarlyStopping callback
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    #early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-7, verbose=1)
 
     # Train the model with EarlyStopping
+    #history = model.fit(X_train, y_train,
+    #                    epochs=300,
+    #                    batch_size=16,
+    #                    validation_data=(X_val, y_val),
+    #                    callbacks=[early_stopping])
+
+    # Train the model with the new callbacks
     history = model.fit(X_train, y_train,
                         epochs=300,
                         batch_size=16,
                         validation_data=(X_val, y_val),
-                        callbacks=[early_stopping])
+                        callbacks=[early_stopping, reduce_lr])
 
     # Plot training & validation loss and accuracy
     plt.figure(figsize=(12, 5))
