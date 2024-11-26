@@ -27,13 +27,13 @@ class Accalerometer_Preprocessing:
                     continue
 
                 if counter == 0:
-                    self.acc_train_df = currentUser.head(10000)
-                    self.tab_train_df = tabular[tabular['id'] == os.path.join(subdir, file)[84:92]]  # Extracting the id from the name of the folder
+                    self.acc_df = currentUser.head(10000)
+                    self.tab_df = tabular[tabular['id'] == os.path.join(subdir, file)[84:92]]  # Extracting the id from the name of the folder
 
                 else:
-                    self.acc_train_df = pd.concat([self.acc_train_df, currentUser.head(10000)], axis=0)
-                    self.tab_train_df = pd.concat(
-                        [self.tab_train_df, tabular[tabular['id'] == os.path.join(subdir, file)[84:92]]], axis=0) # Extracting the id from the name of the folder
+                    self.acc_df = pd.concat([self.acc_df, currentUser.head(10000)], axis=0)
+                    self.tab_df = pd.concat(
+                        [self.tab_df, tabular[tabular['id'] == os.path.join(subdir, file)[84:92]]], axis=0) # Extracting the id from the name of the folder
 
                 if counter % 10 == 0:
                     print(f"Iteration: {counter}")
