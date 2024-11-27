@@ -227,7 +227,7 @@ if __name__ == "__main__":
 
     # Train the model with EarlyStopping
     history = model1.fit([X_acc_train, X_tab_train], y_train,
-                        epochs=10,
+                        epochs=250,
                         batch_size=32,
                         validation_data=([X_acc_val, X_tab_val], y_val),
                         callbacks=early_stopping)
